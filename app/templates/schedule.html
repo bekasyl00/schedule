@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+    <meta charset="UTF-8">
+    <title>Сабақ кестесі</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <!-- Жоғарғы навигация -->
+    <nav class="main-nav">
+        <div class="nav-left">
+            <a href="#" class="nav-logo">Басты бет</a>
+            <a href="#">Ескертпелер</a>
+        </div>
+        <div class="nav-right">
+            <a href="#" class="profile-link">Профиль</a>
+        </div>
+    </nav>
+    <div class="page-layout">
+        <!-- Боковая навигация -->
+        <aside class="side-nav">
+            <ul>
+                {% for day in days %}
+                <li><a href="/?day={{ day }}" {% if day == current_day %}class="active"{% endif %}>{{ day }}</a></li>
+                {% endfor %}
+            </ul>
+        </aside>
+        <div class="container">
+            <h1>Сабақ кестесі — {{ current_day }}</h1>
+            <table class="schedule-table">
+                <thead>
+                    <tr>
+                        <th>Уақыты</th>
+                        <th>Сабақ</th>
+                        <th>Сипаттама</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for lesson in lessons %}
+                    <tr>
+                        <form method="post" action="/edit_lesson">
+                            <td>
+                                <input type="time" name="time" value="{{ lesson.time }}" required>
+                            </td>
+                            <td>
+                                <input type="text" name="subject" value="{{ lesson.subject }}" required>
+                            </td>
+                            <td>
+                                <input type="text" name="desc" value="{{ lesson.desc or '' }}" placeholder="Сипаттама" required>
+                            </td>
+                            <td style="white-space:nowrap;">
+                                <input type="hidden" name="day" value="{{ current_day }}">
+                                <input type="hidden" name="idx" value="{{ loop.index0 }}">
+                        </form>
+                        <form method="post" action="/delete_lesson" style="display:inline;">
+                            <input type="hidden" name="day" value="{{ current_day }}">
+                            <input type="hidden" name="idx" value="{{ loop.index0 }}">
+                            <button type="submit" title="Жою" style="background:none;border:none;cursor:pointer;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="red"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </form>
+                            </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <h3>Сабақ қосу</h3>
+            <form method="post" action="/add_lesson" class="add-lesson-form">
+                <input type="hidden" name="day" value="{{ current_day }}">
+                <input type="time" name="time" required>
+                <input type="text" name="subject" placeholder="Сабақ атауы" required>
+                <input type="text" name="desc" placeholder="Сипаттама" required>
+                <button type="submit">Қосу</button>
+            </form>
+        </div>
+    </div>
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
