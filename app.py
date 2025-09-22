@@ -436,28 +436,31 @@
 # if __name__ == "__main__":
 #     # локально: не забудь, что webhook не будет работать если сервер не доступен извне
 #     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+from flask import Flask, request
 import telebot
 
-TOKEN = "8020072349:AAH3xnHE9OtZQJ8HZhVBlTGDsyhWuYj4XBg"
+TOKEN = "твой_токен"
 bot = telebot.TeleBot(TOKEN)
 
-# обязательно явно включаем обработку сообщений
-@bot.message_handler(commands=['start'])
-def start_message(message):
-    bot.send_message(message.chat.id, "Привет! Я бот расписания.")
-
-# Flask
-from flask import Flask, request
 app = Flask(__name__)
 
 @app.route('/' + TOKEN, methods=['POST'])
 def receive_update():
     json_str = request.get_data().decode('UTF-8')
     update = telebot.types.Update.de_json(json_str)
-    print("UPDATE:", json_str)   # дебаг
     bot.process_new_updates([update])
     return "ok", 200
 
-@app.route('/')
+# пример обработчика
+@bot.message_handler(commands=['start'])
+def start_message(message):
+    bot.send_message(message.chat.id, "Привет! Я бот расписания.")
+    print("Ответ отправлен!")  # лог для проверки
+
+# Просто для проверки, что сервер живой
+@app.route('/', methods=['GET'])
 def index():
-    return "Бот работает!", 200
+    return "Бот работает!"
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
