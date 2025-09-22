@@ -440,7 +440,7 @@ from flask import Flask, request
 import telebot
 
 TOKEN = "8020072349:AAH3xnHE9OtZQJ8HZhVBlTGDsyhWuYj4XBg"
-bot = telebot.TeleBot(TOKEN)
+bot = telebot.TeleBot(TOKEN, threaded=False)  # threaded=False важно для вебхука
 
 app = Flask(__name__)
 
@@ -451,16 +451,16 @@ def receive_update():
     bot.process_new_updates([update])
     return "ok", 200
 
-# пример обработчика
+@app.route("/", methods=['GET'])
+def index():
+    return "Бот работает!", 200
+
+# обработчик команды /start
 @bot.message_handler(commands=['start'])
 def start_message(message):
     bot.send_message(message.chat.id, "Привет! Я бот расписания.")
-    print("Ответ отправлен!")  # лог для проверки
-
-# Просто для проверки, что сервер живой
-@app.route('/', methods=['GET'])
-def index():
-    return "Бот работает!"
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    import os
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
