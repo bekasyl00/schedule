@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+    <meta charset="UTF-8">
+    <title>Ескертпелер</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav class="main-nav">
+        <div class="nav-left">
+            <a href="/" class="nav-logo">Басты бет</a>
+            <a href="/notes">Ескертпелер</a>
+        </div>
+        <div class="nav-right">
+            {% if session.user_phone %}
+                <a href="/profile" class="profile-link">Профиль</a>
+                
+            {% else %}
+                <a href="/login" class="profile-link">Кіру</a>
+                <a href="/register" class="profile-link">Тіркелу</a>
+            {% endif %}
+        </div>
+    </nav>
+    <div class="container">
+        <h1>Ескертпелер</h1>
+        {% if children %}
+        <form method="get" action="/notes" style="margin-bottom:16px;">
+            <label for="child-select">Оқушыны таңдау:</label>
+            <select name="child_phone" id="child-select" onchange="this.form.submit()">
+                <option value="">Өзім</option>
+                {% for child in children %}
+                    <option value="{{ child.phone }}" {% if selected_child == child.phone %}selected{% endif %}>{{ child.first_name }} {{ child.last_name }} ({{ child.phone }})</option>
+                {% endfor %}
+            </select>
+        </form>
+        {% endif %}
+        <form method="post" action="/notes/add" class="add-note-form">
+            <input type="text" name="title" placeholder="Тақырып" required style="width:100%;margin-bottom:8px;">
+            <textarea name="text" placeholder="Мәтін" required style="width:100%;min-height:100px;"></textarea>
+            <button type="submit">Қосу</button>
+        </form>
+        <ul class="notes-list">
+            {% for note in notes %}
+            <li class="note-block">
+                <h3>{{ note.title }}</h3>
+                <div class="note-text">{{ note.text }}</div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+     <footer>
+        Telegram-бот: <a href="https://t.me/Schedule_MessageS_SMS_bot" target="_blank">Телеграм бот</a>
+    </footer>
+</body>
+</html>

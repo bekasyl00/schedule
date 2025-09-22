@@ -10,10 +10,16 @@
     <nav class="main-nav">
         <div class="nav-left">
             <a href="#" class="nav-logo">Басты бет</a>
-            <a href="#">Ескертпелер</a>
+            <a href="/notes">Ескертпелер</a>
         </div>
         <div class="nav-right">
-            <a href="#" class="profile-link">Профиль</a>
+            {% if session.user_phone %}
+                <a href="/profile" class="profile-link">Профиль</a>
+           
+            {% else %}
+                <a href="/login" class="profile-link">Кіру</a>
+                <a href="/register" class="profile-link">Тіркелу</a>
+            {% endif %}
         </div>
     </nav>
     <div class="page-layout">
@@ -27,47 +33,55 @@
         </aside>
         <div class="container">
             <h1>Сабақ кестесі — {{ current_day }}</h1>
-            <table class="schedule-table">
-                <thead>
-                    <tr>
-                        <th>Уақыты</th>
-                        <th>Сабақ</th>
-                        <th>Сипаттама</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for lesson in lessons %}
-                    <tr>
-                        <form method="post" action="/edit_lesson">
-                            <td>
-                                <input type="time" name="time" value="{{ lesson.time }}" required>
-                            </td>
-                            <td>
-                                <input type="text" name="subject" value="{{ lesson.subject }}" required>
-                            </td>
-                            <td>
-                                <input type="text" name="desc" value="{{ lesson.desc or '' }}" placeholder="Сипаттама" required>
-                            </td>
-                            <td style="white-space:nowrap;">
-                                <input type="hidden" name="day" value="{{ current_day }}">
-                                <input type="hidden" name="idx" value="{{ loop.index0 }}">
-                        </form>
-                        <form method="post" action="/delete_lesson" style="display:inline;">
-                            <input type="hidden" name="day" value="{{ current_day }}">
-                            <input type="hidden" name="idx" value="{{ loop.index0 }}">
-                            <button type="submit" title="Жою" style="background:none;border:none;cursor:pointer;">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="red"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                            </button>
-                        </form>
-                            </td>
-                    </tr>
+            {% if children %}
+            <form method="get" action="/" style="margin-bottom:16px;">
+                <input type="hidden" name="day" value="{{ current_day }}">
+                <label for="child-select">Оқушыны таңдау:</label>
+                <select name="child_phone" id="child-select" onchange="this.form.submit()">
+                    <option value="">Өзім</option>
+                    {% for child in children %}
+                        <option value="{{ child.phone }}" {% if selected_child == child.phone %}selected{% endif %}>{{ child.first_name }} {{ child.last_name }} ({{ child.phone }})</option>
                     {% endfor %}
-                </tbody>
-            </table>
+                </select>
+            </form>
+            {% endif %}
+            <ul class="lessons-list">
+                {% for lesson in lessons %}
+                <li class="lesson-block">
+                    <form method="post" action="/edit_lesson" class="lesson-form lesson-actions-row">
+                        <div class="lesson-row">
+                            <input type="time" name="time" value="{{ lesson.time }}" required class="lesson-time">
+                            <input type="text" name="subject" value="{{ lesson.subject }}" required class="lesson-subject" placeholder="Сабақ атауы">
+                            <textarea name="desc" placeholder="Сипаттама" required class="lesson-desc">{{ lesson.desc or '' }}</textarea>
+                            <input type="hidden" name="day" value="{{ current_day }}">
+                            <input type="hidden" name="id" value="{{ lesson.id }}">
+                            {% if selected_child %}
+                            <input type="hidden" name="child_phone" value="{{ selected_child }}">
+                            {% endif %}
+                            <button type="submit" class="save-btn" title="Сақтау" style="background:none;border:none;cursor:pointer;margin-left:8px;padding:2px 6px;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#28a745"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            </button>
+                        </div>
+                    </form>
+                    <form method="post" action="/delete_lesson" class="delete-form">
+                        <input type="hidden" name="day" value="{{ current_day }}">
+                        <input type="hidden" name="id" value="{{ lesson.id }}">
+                        {% if selected_child %}
+                        <input type="hidden" name="child_phone" value="{{ selected_child }}">
+                        {% endif %}
+                        <button type="submit" title="Жою" style="background:none;border:none;cursor:pointer;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="red"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </form>
+                </li>
+                {% endfor %}
+            </ul>
             <h3>Сабақ қосу</h3>
             <form method="post" action="/add_lesson" class="add-lesson-form">
                 <input type="hidden" name="day" value="{{ current_day }}">
+                {% if selected_child %}
+                <input type="hidden" name="child_phone" value="{{ selected_child }}">
+                {% endif %}
                 <input type="time" name="time" required>
                 <input type="text" name="subject" placeholder="Сабақ атауы" required>
                 <input type="text" name="desc" placeholder="Сипаттама" required>
@@ -76,5 +90,11 @@
         </div>
     </div>
     <script src="/static/js/main.js"></script>
+    <footer>
+        Telegram-бот: <a href="https://t.me/Schedule_MessageS_SMS_bot" target="_blank">Телеграм бот</a>
+    </footer>
+    
 </body>
 </html>
+
+

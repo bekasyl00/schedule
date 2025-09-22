@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+    <meta charset="UTF-8">
+    <title>Тіркелу</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Тіркелу</h1>
+        <form method="post" action="/register">
+            <input type="text" name="phone" placeholder="Телефон нөмірі" required style="width:100%;margin-bottom:8px;">
+            <input type="password" name="password" placeholder="Құпия сөз" required style="width:100%;margin-bottom:8px;">
+            <input type="text" name="first_name" placeholder="Аты" required style="width:100%;margin-bottom:8px;">
+            <input type="text" name="last_name" placeholder="Тегі" required style="width:100%;margin-bottom:8px;">
+            <select name="role" id="role-select" required style="width:100%;margin-bottom:16px;" onchange="toggleChildField()">
+                <option value="оқушы">Оқушы</option>
+                <option value="ата-ана">Ата-ана</option>
+            </select>
+            <div id="child-phone-field" style="display:none;margin-bottom:8px;">
+                <input type="text" name="child_phone" placeholder="Бақылайтын оқушының нөмірі">
+            </div>
+            <button type="submit">Тіркелу</button>
+        </form>
+        <p>Тіркелгенсіз бе? <a href="/login">Кіру</a></p>
+    <script>
+    function toggleChildField() {
+        var role = document.getElementById('role-select').value;
+        var childField = document.getElementById('child-phone-field');
+        if (role === 'ата-ана') {
+            childField.style.display = 'block';
+        } else {
+            childField.style.display = 'none';
+        }
+    }
+    // При загрузке страницы
+    document.addEventListener('DOMContentLoaded', function() {
+        toggleChildField();
+    });
+    </script>
+    </div>
+</body>
+</html>
