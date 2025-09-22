@@ -439,7 +439,7 @@
 from flask import Flask, request
 import telebot
 
-TOKEN = "твой_токен"
+TOKEN = "8020072349:AAH3xnHE9OtZQJ8HZhVBlTGDsyhWuYj4XBg"
 bot = telebot.TeleBot(TOKEN)
 
 app = Flask(__name__)
