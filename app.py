@@ -1,151 +1,19 @@
-from flask import Flask, render_template, request, redirect, url_for, session
-import telebot
-import datetime
-import sqlite3
-import os
 
-BOT_TOKEN = "8020072349:AAH3xnHE9OtZQJ8HZhVBlTGDsyhWuYj4XBg"
-WEBHOOK_URL = "https://schedule-1-oo31.onrender.com/" + BOT_TOKEN  # Замените на свой render-домен
-
-app = Flask(__name__)
-app.secret_key = 'supersecretkey'
-bot = telebot.TeleBot(BOT_TOKEN,threaded=False)
-
-DB_PATH = os.path.join(os.path.dirname(__file__), 'notes.db')
-
-# --- DB init ---
-def init_db():
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.execute('''CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    phone TEXT NOT NULL UNIQUE,
-    password TEXT NOT NULL,
-    first_name TEXT NOT NULL,
-    last_name TEXT NOT NULL,
-    role TEXT NOT NULL
-)''')
-        conn.execute('''CREATE TABLE IF NOT EXISTS notes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    title TEXT NOT NULL,
-    text TEXT NOT NULL,
-    FOREIGN KEY(user_id) REFERENCES users(id)
-)''')
-        conn.execute('''CREATE TABLE IF NOT EXISTS schedules (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    day TEXT NOT NULL,
-    time TEXT NOT NULL,
-    subject TEXT NOT NULL,
-    desc TEXT NOT NULL,
-    FOREIGN KEY(user_id) REFERENCES users(id)
-)''')
-        conn.execute('''CREATE TABLE IF NOT EXISTS parent_child (
-    parent_id INTEGER NOT NULL,
-    child_id INTEGER NOT NULL,
-    FOREIGN KEY(parent_id) REFERENCES users(id),
-    FOREIGN KEY(child_id) REFERENCES users(id)
-)''')
-        conn.execute('''CREATE TABLE IF NOT EXISTS telegram_users (
-    user_id INTEGER NOT NULL,
-    chat_id INTEGER NOT NULL,
-    UNIQUE(user_id, chat_id),
-    FOREIGN KEY(user_id) REFERENCES users(id)
-)''')
-init_db()
-
-# --- Telegram bot handlers ---
-from telebot import types
-days_list = ['Дүйсенбі', 'Сейсенбі', 'Сәрсенбі', 'Бейсенбі', 'Жұма', 'Сенбі', 'Жексенбі']
-days_map = {
-    'Дүйсенбі': 0, 'Сейсенбі': 1, 'Сәрсенбі': 2, 'Бейсенбі': 3, 'Жұма': 4, 'Сенбі': 5, 'Жексенбі': 6
-}
-
-@bot.message_handler(commands=['start'])
-def handle_start(message):
-    chat_id = message.chat.id
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add(types.KeyboardButton('Күнделікті көру'))
-    bot.send_message(chat_id, 'Сәлем! Телефоныңызды енгізіңіз (тек цифры):', reply_markup=markup)
-    bot.register_next_step_handler(message, save_phone)
-
-def save_phone(message):
-    chat_id = message.chat.id
-    phone = message.text.strip()
-    with sqlite3.connect(DB_PATH) as conn:
-        cur = conn.execute('SELECT id FROM users WHERE phone=?', (phone,))
-        user = cur.fetchone()
-        if user:
-            user_id = user[0]
-            conn.execute('CREATE TABLE IF NOT EXISTS telegram_users (user_id INTEGER NOT NULL, chat_id INTEGER NOT NULL, UNIQUE(user_id, chat_id), FOREIGN KEY(user_id) REFERENCES users(id))')
-            conn.execute('INSERT OR IGNORE INTO telegram_users (user_id, chat_id) VALUES (?, ?)', (user_id, chat_id))
-            bot.send_message(chat_id, 'Телефон тіркелді! Енді сізге сабақ туралы ескертулер келеді.')
-        else:
-            bot.send_message(chat_id, 'Бұл телефон табылмады. Алдымен сайтта тіркеліңіз.')
-
-@bot.message_handler(func=lambda m: m.text == 'Күнделікті көру')
-def show_days(message):
-    chat_id = message.chat.id
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    for day in days_list:
-        markup.add(types.KeyboardButton(day))
-    bot.send_message(chat_id, 'Қай күнді көргіңіз келеді?', reply_markup=markup)
-
-@bot.message_handler(func=lambda m: m.text in days_list)
-def show_schedule_for_day(message):
-    chat_id = message.chat.id
-    day = message.text
-    with sqlite3.connect(DB_PATH) as conn:
-        cur = conn.execute('SELECT user_id FROM telegram_users WHERE chat_id=?', (chat_id,))
-        user = cur.fetchone()
-        if not user:
-            bot.send_message(chat_id, 'Сіз тіркелмегенсіз. Алдымен /start басыңыз.')
-            return
-        user_id = user[0]
-        cur = conn.execute('SELECT time, subject, desc FROM schedules WHERE user_id=? AND day=? ORDER BY time', (user_id, day))
-        lessons = cur.fetchall()
-        if not lessons:
-            bot.send_message(chat_id, f'{day} күні сабақ жоқ.')
-        else:
-            text = f'{day} күнінің сабақтары:\n'
-            for time, subject, desc in lessons:
-                text += f'⏰ {time} — {subject}\n{desc}\n\n'
-            bot.send_message(chat_id, text)
-
-# --- Webhook endpoint for Telegram ---
-@app.route("/" + BOT_TOKEN, methods=['POST'])
-def receive_update():
-    json_str = request.get_data().decode('UTF-8')
-    update = telebot.types.Update.de_json(json_str)
-    bot.process_new_updates([update])
-    return "ok", 200
-
-# --- Main page for Render healthcheck ---
-@app.route("/")
-def index():
-    return "Flask + Telegram бот работает!"
-
-
-# --- Set webhook on startup (только для Render, не для локального запуска) ---
-with app.app_context():
-    bot.remove_webhook()
-    bot.set_webhook(url=WEBHOOK_URL)
-
-# Не используем bot.polling() и threading вообще!
-
-# ...оставить все остальные Flask routes (register, login, profile, schedule и т.д.) без изменений...
 from flask import Flask, render_template, request, redirect, url_for, session
 from apscheduler.schedulers.background import BackgroundScheduler
 import datetime
 import telebot
+from telebot import types
 
 
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'  # Для сессий, замените на свой ключ
 
 # --- Telegram Bot ---
-BOT_TOKEN = "8020072349:AAH3xnHE9OtZQJ8HZhVBlTGDsyhWuYj4XBg"  # Замените на свой токен
-bot = telebot.TeleBot(BOT_TOKEN)
+BOT_TOKEN = "8020072349:AAH3xnHE9OtZQJ8HZhVBlTGDsyhWuYj4XBg"
+WEBHOOK_URL = "https://schedule-1-oo31.onrender.com/" + BOT_TOKEN 
+# Замените на свой токен
+bot = telebot.TeleBot(BOT_TOKEN,threaded=False)
 
 
 
@@ -153,7 +21,18 @@ bot = telebot.TeleBot(BOT_TOKEN)
 tg_lessons = []
 
 
-from telebot import types
+@app.route("/" + BOT_TOKEN, methods=['POST'])
+def receive_update():
+    json_str = request.get_data().decode('UTF-8')
+    if not json_str:
+        return "no data", 400
+    update = telebot.types.Update.de_json(json_str)
+    bot.process_new_updates([update])
+    return "ok", 200
+
+with app.app_context():
+    bot.remove_webhook()
+    bot.set_webhook(url=WEBHOOK_URL)
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
@@ -578,13 +457,11 @@ def edit_lesson():
         params['child_phone'] = child_phone
     return redirect(url_for('schedule', **params))
 
-import threading
 
 def run_flask():
     app.run(debug=True, use_reloader=False)
 
-def run_bot():
-    bot.polling(none_stop=True)
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
