@@ -440,7 +440,8 @@ from flask import Flask, request
 import telebot
 
 TOKEN = "8020072349:AAH3xnHE9OtZQJ8HZhVBlTGDsyhWuYj4XBg"
-bot = telebot.TeleBot(TOKEN)
+bot = telebot.TeleBot(TOKEN, threaded=True)
+
 
 app = Flask(__name__)
 
@@ -455,6 +456,7 @@ def receive_update():
 # пример обработчика
 @bot.message_handler(commands=['start'])
 def start_message(message):
+    print("HANDLER TRIGGERED:", message.text)  # <-- проверка
     bot.send_message(message.chat.id, "Привет! Я бот расписания.")
 
 if __name__ == "__main__":
