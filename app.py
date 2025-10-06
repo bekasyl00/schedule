@@ -1,10 +1,10 @@
-
 from flask import Flask, render_template, request, redirect, url_for, session
 from apscheduler.schedulers.background import BackgroundScheduler
 import datetime
 import telebot
 from telebot import types
-
+import sqlite3
+import os
 
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'  # Для сессий, замените на свой ключ
@@ -14,8 +14,6 @@ BOT_TOKEN = "8020072349:AAH3xnHE9OtZQJ8HZhVBlTGDsyhWuYj4XBg"
 WEBHOOK_URL = "https://schedule-1-oo31.onrender.com/" + BOT_TOKEN 
 # Замените на свой токен
 bot = telebot.TeleBot(BOT_TOKEN,threaded=False)
-
-
 
 # --- Telegram регистрация chat_id и рассылка ---
 tg_lessons = []
@@ -92,22 +90,19 @@ def save_phone(message):
 def send_reminder():
     now = datetime.datetime.now()
     with sqlite3.connect(DB_PATH) as conn:
-        # Получаем все уроки на ближайшие 2 дня и их владельцев
-        cur = conn.execute('''SELECT s.subject, s.time, s.day, u.id FROM schedules s JOIN users u ON s.user_id = u.id''')
+        cur = conn.execute('''SELECT s.subject, s.time, s.day, s.notify_minutes, u.id FROM schedules s JOIN users u ON s.user_id = u.id''')
         lessons = cur.fetchall()
         days_map = {
-            'Дүйсенбі': 0, 'Сейсенбі': 1, 'Сәрсенбі': 2, 'Бейсенбі': 3, 'Жұма': 4, 'Сенбі': 5, 'Жексенбі': 6
-        }
-        for subject, time_str, day_str, user_id in lessons:
-            # Определяем дату следующего дня недели
+        'Дүйсенбі': 0, 'Сейсенбі': 1, 'Сәрсенбі': 2, 'Бейсенбі': 3, 
+        'Жұма': 4, 'Сенбі': 5, 'Жексенбі': 6
+    }
+        for subject, time_str, day_str, notify_minutes, user_id in lessons:
             lesson_weekday = days_map.get(day_str)
             if lesson_weekday is None:
                 continue
-            # Находим ближайшую дату этого дня недели
             today_weekday = now.weekday()
             days_ahead = (lesson_weekday - today_weekday) % 7
             lesson_date = now.date() + datetime.timedelta(days=days_ahead)
-            # Парсим время
             try:
                 lesson_time = datetime.datetime.strptime(time_str, '%H:%M').time()
             except Exception:
@@ -115,13 +110,11 @@ def send_reminder():
             lesson_dt = datetime.datetime.combine(lesson_date, lesson_time)
             delta = lesson_dt - now
             total_seconds = delta.total_seconds()
-            # Уведомление за 1 день (24±0.2ч) и за 1 час (60±10мин)
-            notify = False
-            if 82800 <= total_seconds <= 87600:  # 23ч-24ч 20мин
-                notify = True
-            elif 3540 <= total_seconds <= 4260:  # 59-71 мин
-                notify = True
-            if notify:
+            if 0 <= total_seconds <= notify_minutes * 60:
+            # ...оставьте остальной код без изменений...
+
+            # Если осталось меньше notify_hours, отправляем уведомление
+            
                 days_left = delta.days
                 hours_left = delta.seconds // 3600
                 minutes_left = (delta.seconds % 3600) // 60
@@ -133,7 +126,9 @@ def send_reminder():
                 if minutes_left > 0 and days_left == 0:
                     left_str.append(f"{minutes_left} минут")
                 left_str = ', '.join(left_str)
+
                 msg = f"⏰ Ескерту! Сабақ: {subject} {lesson_dt.strftime('%A %H:%M')}\nҚалған уақыт: {left_str}"
+
                 cur2 = conn.execute('SELECT chat_id FROM telegram_users WHERE user_id=?', (user_id,))
                 for row in cur2.fetchall():
                     chat_id = row[0]
@@ -142,13 +137,6 @@ def send_reminder():
                     except Exception as e:
                         print(f"Ошибка отправки Telegram: {e}")
 
-# Планировщик
-tg_scheduler = BackgroundScheduler()
-tg_scheduler.add_job(func=send_reminder, trigger="interval", minutes=1)
-tg_scheduler.start()
-
-import sqlite3
-import os
 DB_PATH = os.path.join(os.path.dirname(__file__), 'notes.db')
 def init_db():
     with sqlite3.connect(DB_PATH) as conn:
@@ -168,14 +156,16 @@ def init_db():
             FOREIGN KEY(user_id) REFERENCES users(id)
         )''')
         conn.execute('''CREATE TABLE IF NOT EXISTS schedules (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            day TEXT NOT NULL,
-            time TEXT NOT NULL,
-            subject TEXT NOT NULL,
-            desc TEXT NOT NULL,
-            FOREIGN KEY(user_id) REFERENCES users(id)
-        )''')
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    day TEXT NOT NULL,
+    time TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    desc TEXT NOT NULL,
+    notify_minutes INTEGER DEFAULT 60,
+    FOREIGN KEY(user_id) REFERENCES users(id)
+)
+''')
         conn.execute('''CREATE TABLE IF NOT EXISTS parent_child (
             parent_id INTEGER NOT NULL,
             child_id INTEGER NOT NULL,
@@ -189,8 +179,6 @@ def init_db():
             FOREIGN KEY(user_id) REFERENCES users(id)
         )''')
 init_db()
-# ...existing code...
-
 
 # Регистрация
 @app.route('/register', methods=['GET', 'POST'])
@@ -228,6 +216,15 @@ def register():
         else:
             error = 'Барлық өрістерді толтырыңыз.'
     return render_template('register.html', error=error)
+    # ...existing code...
+    # Кнопка 'Шығу' для выхода и повторного вызова /start
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add(types.KeyboardButton('Шығу'))
+    # ...existing code...
+    if message.text == 'Шығу':
+        bot.send_message(message.chat.id, 'Сіз қайтадан /start баса аласыз!')
+        return handle_start(message)
+    # ...existing code...
 
 
 # Вход
@@ -380,21 +377,29 @@ def add_lesson():
     subject = request.form.get('subject')
     desc = request.form.get('desc')
     child_phone = request.form.get('child_phone')
+    notify_minutes = request.form.get('notify_minutes')
+
     with sqlite3.connect(DB_PATH) as conn:
         cur = conn.execute('SELECT id, role FROM users WHERE phone=?', (session['user_phone'],))
         user = cur.fetchone()
         user_id = user[0] if user else None
         role = user[1] if user else None
-        # Если ата-ана и выбран child_phone, ищем id оқушы, иначе своё
         target_id = user_id
         if role == 'ата-ана' and child_phone:
             cur2 = conn.execute('''SELECT u.id FROM users u JOIN parent_child pc ON u.id = pc.child_id WHERE u.phone=? AND pc.parent_id=?''', (child_phone, user_id))
             child = cur2.fetchone()
             if child:
                 target_id = child[0]
-        if day and time and subject and desc is not None and target_id:
-            conn.execute('INSERT INTO schedules (user_id, day, time, subject, desc) VALUES (?, ?, ?, ?, ?)',
-                         (target_id, day, time, subject, desc))
+        try:
+            notify_minutes_int = int(notify_minutes) if notify_minutes else 60
+        except Exception:
+            notify_minutes_int = 60
+        if day and time and subject and desc and target_id:
+            conn.execute(
+                'INSERT INTO schedules (user_id, day, time, subject, desc, notify_minutes) VALUES (?, ?, ?, ?, ?, ?)',
+                (target_id, day, time, subject, desc, notify_minutes_int)
+            )
+
     # child_phone нужен для возврата к нужному пользователю
     params = {'day': day}
     if role == 'ата-ана' and child_phone:
@@ -430,32 +435,23 @@ def delete_lesson():
 # Изменить урок
 @app.route('/edit_lesson', methods=['POST'])
 def edit_lesson():
-    if 'user_phone' not in session:
-        return redirect(url_for('login'))
-    day = request.form.get('day')
-    lesson_id = request.form.get('id')
-    time = request.form.get('time')
-    subject = request.form.get('subject')
-    desc = request.form.get('desc')
-    child_phone = request.form.get('child_phone')
+    lesson_id = request.form['id']
+    time = request.form['time']
+    subject = request.form['subject']
+    desc = request.form['desc']
+    notify_minutes = request.form.get('notify_minutes', 60)
+    try:
+        notify_minutes_int = int(notify_minutes)
+    except Exception:
+        notify_minutes_int = 60
     with sqlite3.connect(DB_PATH) as conn:
-        cur = conn.execute('SELECT id, role FROM users WHERE phone=?', (session['user_phone'],))
-        user = cur.fetchone()
-        user_id = user[0] if user else None
-        role = user[1] if user else None
-        target_id = user_id
-        if role == 'ата-ана' and child_phone:
-            cur2 = conn.execute('''SELECT u.id FROM users u JOIN parent_child pc ON u.id = pc.child_id WHERE u.phone=? AND pc.parent_id=?''', (child_phone, user_id))
-            child = cur2.fetchone()
-            if child:
-                target_id = child[0]
-        if target_id and lesson_id:
-            conn.execute('UPDATE schedules SET time=?, subject=?, desc=? WHERE id=? AND user_id=?',
-                         (time, subject, desc, lesson_id, target_id))
-    params = {'day': day}
-    if role == 'ата-ана' and child_phone:
-        params['child_phone'] = child_phone
-    return redirect(url_for('schedule', **params))
+        conn.execute('''
+        UPDATE schedules 
+        SET time=?, subject=?, desc=?, notify_minutes=? 
+        WHERE id=?
+    ''', (time, subject, desc, notify_minutes_int, lesson_id))
+        conn.commit()
+    return redirect(request.referrer or '/')
 
 
 def run_flask():

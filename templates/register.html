@@ -8,6 +8,9 @@
 <body>
     <div class="container">
         <h1>Тіркелу</h1>
+        {% if error %}
+          <div class="error" color='red'>{{ error }}</div>
+        {% endif %}
         <form method="post" action="/register">
             <input type="text" name="phone" placeholder="Телефон нөмірі" required style="width:100%;margin-bottom:8px;">
             <input type="password" name="password" placeholder="Құпия сөз" required style="width:100%;margin-bottom:8px;">

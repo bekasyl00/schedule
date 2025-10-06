@@ -55,6 +55,7 @@
                             <textarea name="desc" placeholder="Сипаттама" required class="lesson-desc">{{ lesson.desc or '' }}</textarea>
                             <input type="hidden" name="day" value="{{ current_day }}">
                             <input type="hidden" name="id" value="{{ lesson.id }}">
+                           
                             {% if selected_child %}
                             <input type="hidden" name="child_phone" value="{{ selected_child }}">
                             {% endif %}
@@ -62,16 +63,23 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#28a745"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                             </button>
                         </div>
+                         <div class="notify-wrapper">
+    <input type="number" name="notify_hours" placeholder="Ескерту (сағ)" min="1" max="24" required class="input-notify" value="{{ lesson.notify_hours or '' }}">
+
+    <span class="notify-icon">⏰</span>
+</div>
                     </form>
                     <form method="post" action="/delete_lesson" class="delete-form">
                         <input type="hidden" name="day" value="{{ current_day }}">
                         <input type="hidden" name="id" value="{{ lesson.id }}">
+                       
                         {% if selected_child %}
                         <input type="hidden" name="child_phone" value="{{ selected_child }}">
                         {% endif %}
                         <button type="submit" title="Жою" style="background:none;border:none;cursor:pointer;">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="red"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
+                        
                     </form>
                 </li>
                 {% endfor %}

@@ -206,3 +206,36 @@ footer a {
         text-decoration: underline;
         font-weight: bold;
     }
+.input-notify {
+    width: 120px;              /* Ширина инпута */
+    padding: 8px 32px 8px 12px; /* Отступ справа для иконки */
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input-notify:focus {
+    border-color: #28a745;
+    box-shadow: 0 0 5px rgba(40, 167, 69, 0.3);
+}
+
+.notify-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.notify-wrapper .notify-icon {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    font-size: 16px;
+    color: #28a745;
+}
+.error{
+    color:red;
+    
+}
